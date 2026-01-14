@@ -23,7 +23,7 @@ class TelegramNotifier:
         self.base_url = f"https://api.telegram.org/bot{token}/sendMessage"
 
     def send_message(self, message: str) -> bool:
-        """Telegram bot ile mesaj gönder.
+        """Telegram bot ile mesaj gönder (optional).
         
         Args:
             message: Gönderilecek metin mesajı.
@@ -31,6 +31,11 @@ class TelegramNotifier:
         Returns:
             True: Başarılı, False: Başarısız
         """
+        # Token ve Chat ID boşsa atla (optional)
+        if not self.token or not self.chat_id:
+            logger.debug("Telegram token veya chat_id boş - atlanıyor")
+            return False
+            
         try:
             payload = {
                 "chat_id": self.chat_id,

@@ -63,13 +63,13 @@ class UBYSBotGUI:
         self.setup_logging()
     
     def load_settings(self):
-        """Ayarları dosyadan yükle."""
+        """Ayarları dosyadan yükle (Telegram optional)."""
         default_settings = {
-            "request_delay": 300,  # 5 dakika
+            "request_delay": 60,  # 1 dakika
             "session_timeout": 1800,  # 30 dakika
-            "telegram_enabled": True,
-            "telegram_token": config.TELEGRAM_BOT_TOKEN,
-            "telegram_chat_id": config.TELEGRAM_CHAT_ID,
+            "telegram_enabled": False,  # Default kapalı
+            "telegram_token": "",  # Boş default
+            "telegram_chat_id": "",  # Boş default
             "auto_survey": False
         }
         
@@ -563,32 +563,37 @@ class UBYSBotGUI:
         save_btn.grid(row=4, column=0, columnspan=2, pady=20)
     
     def create_telegram_settings(self, parent):
-        """Telegram ayarlarını göster."""
+        """Telegram ayarlarını göster (OPSİYONEL)."""
         parent.columnconfigure(1, weight=1)
         
+        # Başlık
+        info_label = ttk.Label(parent, text="⚠️ Telegram Opsiyoneldir - Boş bırakabilirsiniz", 
+                              font=('Arial', 10, 'bold'), foreground="blue")
+        info_label.grid(row=0, column=0, columnspan=2, pady=10, sticky=tk.W)
+        
         # Bot Token
-        ttk.Label(parent, text="Bot Token:", font=('Arial', 10)).grid(
-            row=0, column=0, sticky=tk.W, pady=10)
+        ttk.Label(parent, text="Bot Token (opsiyonel):", font=('Arial', 10)).grid(
+            row=1, column=0, sticky=tk.W, pady=10)
         
         self.token_var = tk.StringVar(value=self.settings.get("telegram_token", ""))
         token_entry = ttk.Entry(parent, textvariable=self.token_var, width=40, show="•")
-        token_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), pady=10)
+        token_entry.grid(row=1, column=1, sticky=(tk.W, tk.E), pady=10)
         
         # Chat ID
-        ttk.Label(parent, text="Chat ID:", font=('Arial', 10)).grid(
-            row=1, column=0, sticky=tk.W, pady=10)
+        ttk.Label(parent, text="Chat ID (opsiyonel):", font=('Arial', 10)).grid(
+            row=2, column=0, sticky=tk.W, pady=10)
         
         self.chat_id_var = tk.StringVar(value=self.settings.get("telegram_chat_id", ""))
         chat_id_entry = ttk.Entry(parent, textvariable=self.chat_id_var, width=40)
-        chat_id_entry.grid(row=1, column=1, sticky=(tk.W, tk.E), pady=10)
+        chat_id_entry.grid(row=2, column=1, sticky=(tk.W, tk.E), pady=10)
         
         # Test button
         test_btn = ttk.Button(parent, text="🧪 Test Et", command=self.test_telegram)
-        test_btn.grid(row=2, column=0, columnspan=2, pady=10)
+        test_btn.grid(row=3, column=0, columnspan=2, pady=10)
         
         # Save button
         save_btn = ttk.Button(parent, text="💾 Kaydet", command=self.save_telegram_settings)
-        save_btn.grid(row=3, column=0, columnspan=2, pady=20)
+        save_btn.grid(row=4, column=0, columnspan=2, pady=20)
     
     def create_system_info(self, parent):
         """Sistem bilgilerini göster (dinamik)."""
@@ -683,33 +688,38 @@ Güncelleme Zamanı: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
             messagebox.showerror("Hata", f"Lütfen geçerli sayılar girin! ({e})")
     
     def save_telegram_settings(self):
-        """Telegram ayarlarını kaydet ve bota bildir."""
+        """Telegram ayarlarını kaydet (OPSIYONEL - boş olabilir)."""
         token = self.token_var.get().strip()
         chat_id = self.chat_id_var.get().strip()
         
-        if not token or not chat_id:
-            messagebox.showwarning("Uyarı", "Token ve Chat ID'yi girin!")
+        # Her ikisi de boş ya da her ikisi de dolu olmalı
+        if (token and not chat_id) or (not token and chat_id):
+            messagebox.showwarning("Uyarı", "Token ve Chat ID'yi ikisi birlikte girin veya ikisini de boş bırakın!")
             return
         
         self.settings["telegram_token"] = token
         self.settings["telegram_chat_id"] = chat_id
+        self.settings["telegram_enabled"] = bool(token)  # Token varsa enabled
         self.save_settings()
         
         # Bot'un ayarları güncel alması için config'i reload et
         import config
         config.load_settings()
         
-        messagebox.showinfo("Başarılı", "Telegram ayarları kaydedildi ve bot tarafından kullanılacak!")
+        if token:
+            messagebox.showinfo("Başarılı", "Telegram ayarları kaydedildi!")
+        else:
+            messagebox.showinfo("Bilgi", "Telegram devre dışı - Bot sadece lokal olarak not kaydedecek!")
     
     def test_telegram(self):
-        """Telegram bağlantısını test et."""
+        """Telegram bağlantısını test et (opsiyonel)."""
         try:
             import telegram as tg
             token = self.token_var.get().strip()
             chat_id = self.chat_id_var.get().strip()
             
             if not token or not chat_id:
-                messagebox.showwarning("Uyarı", "Token ve Chat ID'yi girin!")
+                messagebox.showinfo("Bilgi", "Telegram ayarlanmamış - test yapılamaz!")
                 return
             
             notifier = tg.TelegramNotifier(token, chat_id)

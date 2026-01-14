@@ -200,23 +200,26 @@ class HtmlParser:
         return False
 
     def _send_telegram_notification(self) -> None:
-        """Değişim varsa Telegram'a gönder, HER ZAMAN notları kaydet."""
+        """Değişim varsa Telegram'a gönder (OPTIONAL), HER ZAMAN notları kaydet."""
         # Değişim kontrol et
         if self._has_changes():
             message = self._format_message()
             
-            try:
-                notifier = telegram.TelegramNotifier(TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID)
-                # Timeout'u kısa tut, hata durumunda devam et
-                success = notifier.send_message(message)
-                if success:
-                    logger.info(f"Telegram: {self.student_id}")
-            except Exception as e:
-                logger.debug(f"Telegram hatası ({self.student_id}): {str(e)[:50]}")
+            # Telegram optional - boş olsa bile devam et
+            if TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID:
+                try:
+                    notifier = telegram.TelegramNotifier(TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID)
+                    success = notifier.send_message(message)
+                    if success:
+                        logger.info(f"📱 Telegram: {self.student_id}")
+                except Exception as e:
+                    logger.debug(f"Telegram hatası ({self.student_id}): {str(e)[:50]}")
+            else:
+                logger.debug(f"Telegram ayarı yapılmamış, sadece lokal kaydediliyor")
         else:
             logger.debug(f"No changes for {self.student_id}, skipping notification")
         
-        # Notları DAIMA dosyaya kaydet (değişim olup olmadığına bakmaksızın)
+        # Notları DAIMA dosyaya kaydet (Telegram'ı gerekli yok)
         self._save_grades_to_file()
 
     def _save_grades_to_file(self) -> None:

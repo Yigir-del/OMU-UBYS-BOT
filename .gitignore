@@ -52,8 +52,14 @@ Thumbs.db
 
 # Bot Specific
 *.json
+!ubys_bot/users.example.json
 *.log
 ubys_bot.log
 student_grades.json
 bot_settings.json
 users_config.json
+
+# Build artifacts
+build/
+dist/
+!ubys_bot/dist/UBYS_Bot.exe
