@@ -40,8 +40,8 @@ env/
 # Logs
 *.log
 
-# Sensitive data
-users.py
+# Sensitive data (only JSON config, not the template)
+users_config.json
 
 # OS
 .DS_Store

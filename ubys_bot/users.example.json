@@ -1,0 +1,12 @@
+{
+    "user1": {
+        "name": "YOUR_STUDENT_ID_1",
+        "password": "YOUR_PASSWORD_1",
+        "sapid": "https://ubys.omu.edu.tr/AIS/Student/Class/Index?sapid=YOUR_SAPID_HERE_1"
+    },
+    "user2": {
+        "name": "YOUR_STUDENT_ID_2",
+        "password": "YOUR_PASSWORD_2",
+        "sapid": "https://ubys.omu.edu.tr/AIS/Student/Class/Index?sapid=YOUR_SAPID_HERE_2"
+    }
+}
