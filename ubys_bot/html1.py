@@ -9,7 +9,7 @@ from datetime import datetime
 from bs4 import BeautifulSoup
 
 import telegram
-from config import TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
+import config  # Modülü import et, değişkenleri değil
 
 logger = logging.getLogger(__name__)
 
@@ -205,17 +205,17 @@ class HtmlParser:
         if self._has_changes():
             message = self._format_message()
             
-            # Telegram optional - boş olsa bile devam et
-            if TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID:
+            # Telegram optional - flag kapalıysa gönderme
+            if config.TELEGRAM_ENABLED and config.TELEGRAM_BOT_TOKEN and config.TELEGRAM_CHAT_ID:
                 try:
-                    notifier = telegram.TelegramNotifier(TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID)
+                    notifier = telegram.TelegramNotifier(config.TELEGRAM_BOT_TOKEN, config.TELEGRAM_CHAT_ID)
                     success = notifier.send_message(message)
                     if success:
                         logger.info(f"📱 Telegram: {self.student_id}")
                 except Exception as e:
                     logger.debug(f"Telegram hatası ({self.student_id}): {str(e)[:50]}")
             else:
-                logger.debug(f"Telegram ayarı yapılmamış, sadece lokal kaydediliyor")
+                logger.debug(f"Telegram devre dışı veya ayarlanmamış, sadece lokal kaydediliyor")
         else:
             logger.debug(f"No changes for {self.student_id}, skipping notification")
         
