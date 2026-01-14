@@ -1,5 +1,6 @@
 """GUI Application for UBYS Bot."""
 
+import sys
 import tkinter as tk
 from tkinter import ttk, messagebox, scrolledtext
 import threading
@@ -9,6 +10,17 @@ import logging
 from typing import List, Dict
 from datetime import datetime
 import time
+
+# PyInstaller uyumluluğu: EXE veya normal Python çalışmasında çalışsın
+if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+    # PyInstaller ile derlenmiş EXE
+    BASE_DIR_TEMP = sys._MEIPASS
+else:
+    # Normal Python çalışması
+    BASE_DIR_TEMP = os.path.dirname(os.path.abspath(__file__))
+
+if BASE_DIR_TEMP not in sys.path:
+    sys.path.insert(0, BASE_DIR_TEMP)
 
 import main
 import users
@@ -639,15 +651,8 @@ class UBYSBotGUI:
   • Telegram: {'Etkin' if config.TELEGRAM_ENABLED else 'Devre Dışı'}
   • Otomatik Anket: {'Etkin' if config.AUTO_SURVEY else 'Devre Dışı'}
 
-📁 DOSYALAR:
-  • Kullanıcı Yapılandırması: {CONFIG_FILE}
-  • Not Veritabanı: {GRADES_FILE}
-  • Ayarlar: {SETTINGS_FILE}
-  • Log Dosyası: ubys_bot.log
-
-🚀 BOT DURUMU:
+� BOT DURUMU:
   • Çalışma Durumu: {'Çalışıyor' if self.is_running else 'Durduruldu'}
-  • İşlem Kimlği: {self.bot_thread.ident if self.bot_thread else 'Yok'}
 
 📝 AÇIKLAMALAR:
   İstek Aralığı: Bot'un kaç saniyede bir not kontrolü yapacağı

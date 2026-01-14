@@ -25,8 +25,11 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Configure stdout encoding for Windows
-if sys.platform == 'win32':
-    sys.stdout.reconfigure(encoding='utf-8')
+if sys.platform == 'win32' and sys.stdout is not None:
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
 
 # Global flag to control bot execution
 _bot_running = True
