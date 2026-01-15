@@ -11,6 +11,7 @@ from typing import Dict, Optional
 import login
 import users
 import config
+import grade_change_detector
 
 # Configure logging
 logging.basicConfig(
@@ -140,7 +141,11 @@ def process_user(user_config: Dict[str, str]) -> None:
     
     try:
         manager = SessionManager(username, password, sapid)
-        manager.fetch_student_data()
+        success = manager.fetch_student_data()
+        
+        # Veri çekme başarısız ise (anket veya hata)
+        if not success:
+            logger.warning(f"{username} için veri çekme başarısız - muhtemelen anket var veya hata oluştu")
     except Exception as e:
         logger.error(f"{username} için işlem sırasında hata oluştu: {e}", exc_info=True)
 

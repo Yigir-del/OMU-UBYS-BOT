@@ -25,6 +25,8 @@ if BASE_DIR_TEMP not in sys.path:
 import main
 import users
 import config
+import grade_change_detector
+import error_tracker
 
 # Dosya yolları (config.py ile uyumlu)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -63,6 +65,10 @@ class UBYSBotGUI:
         self.bot_thread = None
         self.user_list = []
         self.settings = {}
+        self.notifications = []
+        self.notification_frame = None
+        self.detector = grade_change_detector.GradeChangeDetector(GRADES_FILE)
+        self.error_tracker = error_tracker.ErrorTracker(BASE_DIR)
         
         # Load users from file
         self.load_users()
@@ -73,6 +79,9 @@ class UBYSBotGUI:
         
         # Setup logging
         self.setup_logging()
+        
+        # Başlangıçta bildirimleri kontrol et
+        self.root.after(1000, self.check_and_display_notifications)
     
     def load_settings(self):
         """Ayarları dosyadan yükle (Telegram optional)."""
@@ -124,16 +133,23 @@ class UBYSBotGUI:
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
         main_frame.columnconfigure(0, weight=1)
-        main_frame.rowconfigure(1, weight=1)
+        main_frame.rowconfigure(0, weight=0)
+        main_frame.rowconfigure(1, weight=0)
+        main_frame.rowconfigure(2, weight=1)
         
         # Title
         title_label = ttk.Label(main_frame, text="🎓 UBYS Bot - Not Takip Sistemi", 
                                font=('Arial', 16, 'bold'))
         title_label.grid(row=0, column=0, pady=10)
         
+        # Notifications frame (will be populated dynamically)
+        self.notification_frame = ttk.Frame(main_frame)
+        self.notification_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+        self.notification_frame.columnconfigure(0, weight=1)
+        
         # Create notebook (tabs)
         notebook = ttk.Notebook(main_frame)
-        notebook.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        notebook.grid(row=2, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         
         # Tab değiştirildiğinde callback
         notebook.bind("<<NotebookTabChanged>>", self.on_tab_changed)
@@ -752,7 +768,129 @@ Güncelleme Zamanı: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
             else:
                 messagebox.showerror("Hata", "Mesaj gönderilemedi!")
         except Exception as e:
-            messagebox.showerror("Hata", f"Hata oluştu: {e}")
+            messagebox.showerror("Hata", f"Telegram test sırasında hata oluştu: {e}")
+
+    def check_and_display_notifications(self):
+        """Bildirimleri kontrol et ve göster."""
+        try:
+            self.notifications = []
+            
+            # İlk yükleme uyarısını kontrol et
+            if not self.detector.has_previous_data():
+                self.notifications.append({
+                    "type": "first_load",
+                    "title": "ℹ️ İlk Yükleme - Not Bilgisi Ön Uyarısı",
+                    "message": "Bu ilk veri yüklemesi yapılıyor. Not girildi mesajları gerçeği yansıtmayabilir. İkinci yüklemeden sonra doğru bildirimleri alacaksınız.",
+                    "severity": "info"
+                })
+            
+            # Ders değişikliklerinden bildirimleri al
+            grade_notifications = self.detector.get_notifications()
+            self.notifications.extend(grade_notifications)
+            
+            # Error tracker'dan anket uyarılarını al
+            survey_alerts = self.error_tracker.get_survey_alerts()
+            for student_id, alert_data in survey_alerts.items():
+                self.notifications.append({
+                    "type": "survey",
+                    "student_id": student_id,
+                    "title": f"📋 {student_id} - Anket Gerekli!",
+                    "message": alert_data.get("message", "Ders hakkında anket çözmek zorundasınız."),
+                    "severity": "critical"
+                })
+            
+            # Error tracker'dan hata uyarılarını al
+            error_alerts = self.error_tracker.get_error_alerts()
+            for student_id, alert_data in error_alerts.items():
+                self.notifications.append({
+                    "type": "fetch_error",
+                    "student_id": student_id,
+                    "title": f"⚠️ {student_id} - Veri Çekme Hatası!",
+                    "message": alert_data.get("message", "Lütfen giriş bilgilerinizi kontrol edin."),
+                    "severity": "error"
+                })
+            
+            self.display_notifications()
+            
+            # Her 30 saniyede bir kontrol et
+            self.root.after(30000, self.check_and_display_notifications)
+        except Exception as e:
+            logging.error(f"Bildirimler kontrol edilirken hata: {e}")
+            self.root.after(30000, self.check_and_display_notifications)
+
+    def display_notifications(self):
+        """Bildirimleri UI'da göster."""
+        # Mevcut bildirimleri temizle
+        for widget in self.notification_frame.winfo_children():
+            widget.destroy()
+        
+        if not self.notifications:
+            return
+        
+        # Severity türüne göre renk belirle
+        color_map = {
+            "info": "#2196F3",      # Mavi
+            "warning": "#FF9800",   # Turuncu
+            "error": "#F44336",     # Kırmızı
+            "critical": "#9C27B0"   # Mor
+        }
+        
+        for notification in self.notifications[:3]:  # En fazla 3 bildirim göster
+            severity = notification.get("severity", "info")
+            color = color_map.get(severity, "#2196F3")
+            
+            # Bildirim frame'i oluştur
+            notif_frame = tk.Frame(self.notification_frame, bg=color, relief=tk.FLAT)
+            notif_frame.grid(row=len(list(self.notification_frame.winfo_children())), 
+                            column=0, sticky=(tk.W, tk.E), pady=1)
+            self.notification_frame.columnconfigure(0, weight=1)
+            
+            # Başlık
+            title_label = tk.Label(notif_frame, text=notification.get("title", ""),
+                                  bg=color, fg="white", font=('Arial', 8, 'bold'),
+                                  wraplength=350, justify=tk.LEFT, padx=8, pady=2)
+            title_label.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=3, pady=1)
+            
+            # Mesaj
+            msg_label = tk.Label(notif_frame, text=notification.get("message", ""),
+                                bg=color, fg="white", font=('Arial', 7),
+                                wraplength=350, justify=tk.LEFT, padx=8, pady=1)
+            msg_label.grid(row=1, column=0, sticky=(tk.W, tk.E), padx=3, pady=1)
+            
+            # Kapatma butonu
+            close_btn = tk.Button(notif_frame, text="✕", bg=color, fg="white",
+                                 font=('Arial', 8, 'bold'), relief=tk.FLAT,
+                                 command=lambda n=notification: self.dismiss_notification(n))
+            close_btn.grid(row=0, column=1, rowspan=2, padx=3, pady=1)
+
+    def dismiss_notification(self, notification):
+        """Bildirimi kaldır."""
+        if notification in self.notifications:
+            self.notifications.remove(notification)
+            self.display_notifications()
+
+    def add_fetch_error(self, student_id: str, error_msg: str = ""):
+        """Veri çekme hatasını bildirimlere ekle.
+        
+        Args:
+            student_id: Öğrenci ID'si
+            error_msg: Hata mesajı
+        """
+        error_notif = self.detector.get_fetch_error_notification(student_id, error_msg)
+        if error_notif not in self.notifications:
+            self.notifications.append(error_notif)
+            self.root.after(0, self.display_notifications)
+
+    def add_survey_notification(self, student_id: str):
+        """Anket bildirimini ekle.
+        
+        Args:
+            student_id: Öğrenci ID'si
+        """
+        survey_notif = self.detector.get_survey_notification(student_id)
+        if survey_notif not in self.notifications:
+            self.notifications.append(survey_notif)
+            self.root.after(0, self.display_notifications)
 
 
 def main_gui():

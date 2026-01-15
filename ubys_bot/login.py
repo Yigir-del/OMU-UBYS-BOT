@@ -1,15 +1,21 @@
 """OMU UBYS login and session management."""
 
 import logging
+import os
 from typing import Optional
 
 import requests
 from bs4 import BeautifulSoup
 
 import html1
+import error_tracker
 from config import UBYS_BASE_URL, UBYS_LOGIN_URL, AUTO_SURVEY
 
 logger = logging.getLogger(__name__)
+
+# Error tracker initialize - LokalizedMER
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+_error_tracker = error_tracker.ErrorTracker(BASE_DIR)
 
 
 class OMULogin:
@@ -199,27 +205,37 @@ class OMULogin:
                 # Anket kontrolü
                 if "SURVEY LAYOUT" in html_content or "anketi açmak için" in html_content.lower():
                     logger.warning(f"{self.username} için anket algılandı!")
+                    # Anket bulunduğunu kaydet
+                    _error_tracker.record_survey_found(self.username)
+                    
                     if AUTO_SURVEY:
                         logger.info(f"{self.username} için anket otomatik çözülüyor...")
                         if self.check_and_complete_survey(page_url):
                             # Anketi çözdükten sonra sayfayı tekrar çek
                             response = self.session.get(page_url, timeout=10)
                             html_content = response.text
+                            # Anket çözüldüyse uyarıyı temizle
+                            _error_tracker.clear_survey_alert(self.username)
                         else:
                             logger.error(f"{self.username} için anket çözülemedi!")
                     else:
                         logger.warning(f"{self.username} için anket çözme devre dışı. Lütfen manuel çözün.")
+                        return False  # Anket çözülemedi, başarısız döndür
 
                 # HTML'i parse et
                 html1.HtmlParser(html_content, self.username)
                 logger.info(f"{self.username} için sayfa içeriği alındı.")
+                # Başarılıysa hata uyarısını temizle
+                _error_tracker.clear_error_alert(self.username)
                 return True
             else:
                 logger.warning("Boş HTML içeriği alındı!")
+                _error_tracker.record_fetch_error(self.username, "Boş HTML içeriği")
                 return False
                 
         except requests.exceptions.RequestException as e:
             logger.error(f"Sayfa içeriği alınırken hata oluştu: {e}")
+            _error_tracker.record_fetch_error(self.username, str(e))
             return False
 
     def close(self) -> None:

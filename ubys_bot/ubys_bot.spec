@@ -2,11 +2,11 @@
 
 
 a = Analysis(
-    ['gui.py', 'main.py', 'users.py', 'config.py', 'login.py', 'html1.py', 'telegram.py'],
+    ['gui.py', 'main.py', 'users.py', 'config.py', 'login.py', 'html1.py', 'telegram.py', 'grade_change_detector.py', 'error_tracker.py'],
     pathex=['.'],
     binaries=[],
     datas=[],
-    hiddenimports=['main', 'users', 'config', 'login', 'html1', 'telegram', 'bs4', 'requests', 'urllib3', 'charset_normalizer', 'certifi', 'idna', 'soupsieve'],
+    hiddenimports=['main', 'users', 'config', 'login', 'html1', 'telegram', 'grade_change_detector', 'error_tracker', 'bs4', 'requests', 'urllib3', 'charset_normalizer', 'certifi', 'idna', 'soupsieve'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
